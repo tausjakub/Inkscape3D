@@ -1,0 +1,120 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #f4f4f9;
+}
+
+header {
+    width: 100%;
+    padding: 20px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+#3d-container {
+    width: 800px;
+    height: 600px;
+    border: 1px solid #ccc;
+    margin-top: 20px;
+    background-color: #ccc;
+}
+
+#controls {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#model-selector {
+    margin-bottom: 10px;
+    padding: 10px;
+    font-size: 16px;
+}
+
+#skin-color-selector {
+    margin-bottom: 10px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.skin-color {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #000;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: transparent;
+    transition: transform 0.2s ease;
+}
+
+.skin-color:hover {
+    transform: scale(1.2);
+}
+
+.skin-color[data-color="#ffe0bd"] { background-color: #ffe0bd; }
+.skin-color[data-color="#ffcd94"] { background-color: #ffcd94; }
+.skin-color[data-color="#eac086"] { background-color: #eac086; }
+.skin-color[data-color="#ae734b"] { background-color: #ae734b; }
+.skin-color[data-color="#6f4f28"] { background-color: #6f4f28; }
+
+#tattoo-selector {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.tattoo-button {
+    width: 50px;
+    height: 50px;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid #000;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.tattoo-button:hover {
+    transform: scale(1.2);
+}
+
+#instructions {
+    margin-top: 20px;
+    text-align: center;
+}
+
+#instructions h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+#instructions ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    font-size: 1rem;
+}
+
+footer {
+    margin-top: 20px;
+    font-size: 0.9rem;
+    color: #666;
+}

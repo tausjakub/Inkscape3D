@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tattoo Visualization App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Tattoo Visualization App</h1>
+        <p>Visualize your tattoos on a 3D model in real-time</p>
+    </header>
+    <main>
+        <div id="3d-container"></div>
+        <div id="controls">
+            <select id="model-selector">
+                <option value="/models/male_body.glb">Male Body</option>
+                <option value="/models/female_body_base.glb">Female Body</option>
+            </select>
+            <div id="skin-color-selector">
+                <button class="skin-color" data-color="#ffe0bd"></button>
+                <button class="skin-color" data-color="#ffcd94"></button>
+                <button class="skin-color" data-color="#eac086"></button>
+                <button class="skin-color" data-color="#ae734b"></button>
+                <button class="skin-color" data-color="#6f4f28"></button>
+            </div>
+            <div id="tattoo-selector"></div>
+            <div id="tattoo-list"></div>
+            <div id="instructions">
+                <h3>Keyboard Controls:</h3>
+                <ul>
+                    <li><b>W / S:</b> Move tattoo up / down</li>
+                    <li><b>A / D:</b> Move tattoo left / right</li>
+                    <li><b>Q:</b> Increase tattoo size</li>
+                    <li><b>E:</b> Decrease tattoo size</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2024 Tattoo Visualization App</p>
+    </footer>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.110.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.110.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.110.0/examples/js/geometries/DecalGeometry.js"></script>
+
+</body>
+</html>
