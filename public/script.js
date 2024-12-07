@@ -206,6 +206,45 @@ function generateTattooButtons(tattoos) {
     const tattoos = await fetch('/api/tattoos').then((res) => res.json());
     generateTattooButtons(tattoos);
 })();
+// Přidání tlačítka a funkce pro smazání vybraného tetování
+const deleteButton = document.createElement('button');
+deleteButton.textContent = '🗑️ Smazat tetování';
+deleteButton.id = 'delete-tattoo-button';
+deleteButton.disabled = true; // Neaktivní, dokud není vybrané tetování
+document.body.appendChild(deleteButton);
+
+// Přidání posluchače pro tlačítko
+deleteButton.addEventListener('click', () => {
+    if (selectedTattoo) {
+        // Odebrání tetování ze scény
+        scene.remove(selectedTattoo);
+
+        // Odebrání tetování z pole
+        const index = tattoos.indexOf(selectedTattoo);
+        if (index > -1) {
+            tattoos.splice(index, 1);
+        }
+
+        // Reset výběru
+        selectedTattoo = null;
+        deleteButton.disabled = true;
+
+        // Aktualizace seznamu tetování
+        updateTattooList();
+    }
+});
+
+// Aktualizace funkce pro zvýraznění vybraného tetování
+function highlightSelectedTattoo(selectedIndex) {
+    const buttons = document.querySelectorAll('#tattoo-list button');
+    buttons.forEach((button, index) => {
+        button.classList.toggle('selected', index === selectedIndex);
+    });
+
+    // Povolit tlačítko pro mazání, pokud je něco vybráno
+    deleteButton.disabled = selectedTattoo === null;
+}
+
 
 // Animace
 function animate() {
