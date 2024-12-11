@@ -127,7 +127,7 @@ function applyTattoo(texturePath, position, rotation, size) {
             opacity: 1.0,
             depthTest: true,
             depthWrite: false,
-            side: THREE.FrontSide, // Render only front-facing polygons
+            side: THREE.FrontSide,
         });
 
         let validMesh = null;
@@ -142,22 +142,12 @@ function applyTattoo(texturePath, position, rotation, size) {
             return;
         }
 
-        // Adjust size and depth
-        const adjustedSize = new THREE.Vector3(size.x, size.y, 0.01);
-
-        // Debug: Log decal parameters
-        console.log('Applying decal:', {
-            position,
-            rotation,
-            size: adjustedSize,
-            material: decalMaterial,
-        });
-
+        // Nastavení velikosti a hloubky tetování
         const decalGeometry = new THREE.DecalGeometry(
             validMesh,
             position,
             rotation,
-            adjustedSize
+            new THREE.Vector3(size.x, size.y, 1) // Zvýšení hloubky
         );
 
         const decalMesh = new THREE.Mesh(decalGeometry, decalMaterial);
@@ -170,6 +160,8 @@ function applyTattoo(texturePath, position, rotation, size) {
 }
 
 
+
+let previewSize = new THREE.Vector3(2, 2, 0.05); // Výchozí velikost tetování
 
 
 
@@ -226,6 +218,92 @@ document.addEventListener('click', (event) => {
         }
     }
 });
+
+let previewTattoo = null; // Náhled tetování
+
+// Detekce kliknutí na model pro náhled tetování
+document.addEventListener('mousemove', (event) => {
+    const mouse = new THREE.Vector2(
+        (event.clientX / window.innerWidth) * 2 - 1,
+        -(event.clientY / window.innerHeight) * 2 + 1
+    );
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    if (currentModel) {
+        const intersects = raycaster.intersectObject(currentModel, true);
+        if (intersects.length > 0) {
+            const point = intersects[0].point;
+            const normal = intersects[0].face.normal.clone().normalize();
+            const position = new THREE.Vector3(point.x, point.y, point.z);
+            const rotation = new THREE.Euler().setFromVector3(normal);
+
+            // Zobrazí náhled tetování
+            showPreviewTattoo('/tattoos/anchor.png', position, rotation);
+        } else {
+            // Skryje náhled, pokud není nic detekováno
+            hidePreviewTattoo();
+        }
+    }
+});
+
+function showPreviewTattoo(texturePath, position, rotation) {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(texturePath, (tattooTexture) => {
+        if (previewTattoo) scene.remove(previewTattoo);
+
+        const previewMaterial = new THREE.MeshPhongMaterial({
+            map: tattooTexture,
+            transparent: true,
+            opacity: 0.5, // Poloprůhledný náhled
+            depthTest: true,
+            depthWrite: false,
+            side: THREE.FrontSide,
+        });
+
+        let validMesh = null;
+        currentModel.traverse((child) => {
+            if (child.isMesh && child.geometry) {
+                validMesh = child;
+            }
+        });
+
+        if (!validMesh) {
+            console.error('No valid geometry found in the model.');
+            return;
+        }
+
+        // Nastavení velikosti a hloubky tetování
+        const decalGeometry = new THREE.DecalGeometry(
+            validMesh,
+            position,
+            rotation,
+            new THREE.Vector3(2, 2, 1) // Zvýšení velikosti a hloubky
+        );
+
+        previewTattoo = new THREE.Mesh(decalGeometry, previewMaterial);
+        scene.add(previewTattoo);
+    });
+}
+
+function hidePreviewTattoo() {
+    if (previewTattoo) {
+        scene.remove(previewTattoo);
+        previewTattoo = null;
+    }
+}
+
+
+document.addEventListener('click', (event) => {
+    if (previewTattoo) {
+        // Finalizace tetování (přidání do seznamu)
+        tattoos.push(previewTattoo);
+        previewTattoo = null; // Reset náhledu
+        updateTattooList();
+    }
+});
+
 
 // Tlačítko pro smazání vybraného tetování
 const deleteButton = document.createElement('button');
