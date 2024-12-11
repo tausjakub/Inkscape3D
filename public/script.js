@@ -116,7 +116,7 @@ const tattoos = []; // Pole pro uchování všech tetování
 let selectedTattoo = null;
 
 // Funkce pro aplikaci tetování
-function applyTattoo(texturePath, position, rotation, size) {
+function applyTattoo(texturePath, position, rotation) {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(texturePath, (tattooTexture) => {
         if (!currentModel) return;
@@ -142,12 +142,12 @@ function applyTattoo(texturePath, position, rotation, size) {
             return;
         }
 
-        // Nastavení velikosti a hloubky tetování
+        // Použití aktuální velikosti z previewSize
         const decalGeometry = new THREE.DecalGeometry(
             validMesh,
             position,
             rotation,
-            new THREE.Vector3(size.x, size.y, 1) // Zvýšení hloubky
+            previewSize // Velikost tetování odpovídá velikosti náhledu
         );
 
         const decalMesh = new THREE.Mesh(decalGeometry, decalMaterial);
@@ -158,6 +158,7 @@ function applyTattoo(texturePath, position, rotation, size) {
         updateTattooList();
     });
 }
+
 
 
 
@@ -274,18 +275,47 @@ function showPreviewTattoo(texturePath, position, rotation) {
             return;
         }
 
-        // Nastavení velikosti a hloubky tetování
+        // Použití dynamické velikosti
         const decalGeometry = new THREE.DecalGeometry(
             validMesh,
             position,
             rotation,
-            new THREE.Vector3(2, 2, 1) // Zvýšení velikosti a hloubky
+            previewSize
         );
 
         previewTattoo = new THREE.Mesh(decalGeometry, previewMaterial);
         scene.add(previewTattoo);
     });
 }
+
+function updatePreviewTattoo() {
+    if (previewTattoo) {
+        scene.remove(previewTattoo);
+        previewTattoo = null;
+    }
+
+    // Znovu vytvoří náhled s aktualizovanou velikostí
+    const mouseEvent = { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 }; // Simulace myši ve středu obrazovky
+    document.dispatchEvent(new MouseEvent('mousemove', mouseEvent));
+}
+
+
+document.addEventListener('keydown', (event) => {
+    switch (event.key) {
+        case '+': // Zvýšení velikosti
+            previewSize.x += 0.1;
+            previewSize.y += 0.1;
+            updatePreviewTattoo(); // Aktualizace náhledu
+            break;
+        case '-': // Snížení velikosti
+            previewSize.x = Math.max(0.1, previewSize.x - 0.1); // Minimální velikost 0.1
+            previewSize.y = Math.max(0.1, previewSize.y - 0.1);
+            updatePreviewTattoo(); // Aktualizace náhledu
+            break;
+    }
+});
+
+
 
 function hidePreviewTattoo() {
     if (previewTattoo) {
