@@ -73,6 +73,7 @@ function loadModel(modelPath) {
 }
 
 
+let previewRotation = new THREE.Euler(0, 0, 0); // Výchozí rotace náhledu tetování
 
 
 
@@ -142,12 +143,11 @@ function applyTattoo(texturePath, position, rotation) {
             return;
         }
 
-        // Použití aktuální velikosti z previewSize
         const decalGeometry = new THREE.DecalGeometry(
             validMesh,
             position,
-            rotation,
-            previewSize // Velikost tetování odpovídá velikosti náhledu
+            previewRotation, // Použití aktuální rotace
+            previewSize
         );
 
         const decalMesh = new THREE.Mesh(decalGeometry, decalMaterial);
@@ -162,7 +162,8 @@ function applyTattoo(texturePath, position, rotation) {
 
 
 
-let previewSize = new THREE.Vector3(2, 2, 0.05); // Výchozí velikost tetování
+
+let previewSize = new THREE.Vector3(2, 2, 0.5); // Výchozí velikost tetování
 
 
 
@@ -275,11 +276,10 @@ function showPreviewTattoo(texturePath, position, rotation) {
             return;
         }
 
-        // Použití dynamické velikosti
         const decalGeometry = new THREE.DecalGeometry(
             validMesh,
             position,
-            rotation,
+            previewRotation, // Použití globální rotace
             previewSize
         );
 
@@ -287,6 +287,7 @@ function showPreviewTattoo(texturePath, position, rotation) {
         scene.add(previewTattoo);
     });
 }
+
 
 function updatePreviewTattoo() {
     if (previewTattoo) {
@@ -298,6 +299,19 @@ function updatePreviewTattoo() {
     const mouseEvent = { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 }; // Simulace myši ve středu obrazovky
     document.dispatchEvent(new MouseEvent('mousemove', mouseEvent));
 }
+
+document.addEventListener('keydown', (event) => {
+    switch (event.key) {
+        case 'Q': // Rotace doleva (zvýšení rotace kolem osy Z)
+            previewRotation.z += 0.1; // Rotace v radiánech
+            updatePreviewTattoo();
+            break;
+        case 'E': // Rotace doprava (snížení rotace kolem osy Z)
+            previewRotation.z -= 0.1;
+            updatePreviewTattoo();
+            break;
+    }
+});
 
 
 document.addEventListener('keydown', (event) => {
