@@ -10,9 +10,9 @@ document.getElementById('3d-container').appendChild(renderer.domElement);
 const light = new THREE.AmbientLight(0xffffff, 1);
 scene.add(light);
 
-// Nastavení kamery
-camera.position.set(0, 1.5, 5);
-camera.lookAt(0, 1.5, 0);
+// Nastavení kamery - přiblížení k modelu
+camera.position.set(0, 1.5, 12); // Blíže k modelu
+camera.lookAt(0, 1, 0); // Pohled na střed modelu
 
 // OrbitControls pro rotaci modelu myší
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -27,21 +27,61 @@ let currentModel;
 
 function loadModel(modelPath) {
     if (currentModel) {
-        scene.remove(currentModel);
+        scene.remove(currentModel); // Odstranění předchozího modelu
     }
 
     loader.load(
         modelPath,
         (gltf) => {
             currentModel = gltf.scene;
-            scene.add(currentModel);
+
+            // Traverse všechny uzly modelu a nastav bílou barvu
+            currentModel.traverse((child) => {
+                if (child.isMesh) {
+                    const whiteMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xffffff, // Bílá barva
+                        roughness: 0.8,
+                        metalness: 0.1,
+                    });
+                    child.material = whiteMaterial; // Nastavení nového materiálu
+                }
+            });
+
+            // Normalizace modelu na pevnou velikost
+            const box = new THREE.Box3().setFromObject(currentModel);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+
+            const desiredHeight = 2; // Požadovaná výška modelu
+            const scale = desiredHeight / size.y; // Výpočet měřítka podle výšky
+            currentModel.scale.set(scale, scale, scale);
+
+            // Rotace modelu čelem ke kameře
+            currentModel.rotation.y = Math.PI; // Otočení o 180° kolem osy Y
+            currentModel.rotation.x = Math.PI*0.5;
+            currentModel.rotation.z = Math.PI;
+            // Umístění modelu
+            currentModel.position.set(0, -6, 0);
+
+            scene.add(currentModel); // Přidání modelu do scény
         },
         undefined,
         (error) => {
-            console.error('Chyba při načítání modelu:', error);
+            console.error('Error loading model:', error);
         }
     );
 }
+
+
+
+
+
+
+console.log('Scene contents:', scene.children);
+console.log('Camera position:', camera.position);
+console.log('Renderer size:', renderer.getSize(new THREE.Vector2()));
+
+
 
 // Výběr modelu
 const modelSelector = document.getElementById('model-selector');
@@ -62,8 +102,8 @@ skinColorButtons.forEach((button) => {
         currentModel.traverse((child) => {
             if (child.isMesh) {
                 const material = child.material.clone();
-                material.color.set(selectedColor); // Nastaví barvu materiálu
-                material.map = null; // Odstraní tetování, pokud existuje
+                material.color.set(selectedColor);
+                material.map = null;
                 material.needsUpdate = true;
                 child.material = material;
             }
@@ -71,11 +111,12 @@ skinColorButtons.forEach((button) => {
     });
 });
 
-// Správa tetování
+// Tetování s použitím shrink-wrap decal geometrie
 const tattoos = []; // Pole pro uchování všech tetování
-let selectedTattoo = null; // Aktuálně vybrané tetování
+let selectedTattoo = null;
 
-function applyTattoo(texturePath) {
+// Funkce pro aplikaci tetování
+function applyTattoo(texturePath, position, rotation, size) {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(texturePath, (tattooTexture) => {
         if (!currentModel) return;
@@ -83,8 +124,10 @@ function applyTattoo(texturePath) {
         const decalMaterial = new THREE.MeshPhongMaterial({
             map: tattooTexture,
             transparent: true,
+            opacity: 1.0,
             depthTest: true,
-            depthWrite: false
+            depthWrite: false,
+            side: THREE.FrontSide, // Render only front-facing polygons
         });
 
         let validMesh = null;
@@ -95,125 +138,103 @@ function applyTattoo(texturePath) {
         });
 
         if (!validMesh) {
-            console.error('Tetování nelze aplikovat: žádná platná geometrie v modelu.');
+            console.error('No valid geometry found in the model.');
             return;
         }
 
-        const decalSize = new THREE.Vector3(1, 1, 1); // Výchozí velikost tetování
+        // Adjust size and depth
+        const adjustedSize = new THREE.Vector3(size.x, size.y, 0.01);
+
+        // Debug: Log decal parameters
+        console.log('Applying decal:', {
+            position,
+            rotation,
+            size: adjustedSize,
+            material: decalMaterial,
+        });
+
         const decalGeometry = new THREE.DecalGeometry(
             validMesh,
-            new THREE.Vector3(0, 1.5, 0), // Výchozí pozice tetování
-            new THREE.Euler(0, 0, 0),
-            decalSize
+            position,
+            rotation,
+            adjustedSize
         );
 
         const decalMesh = new THREE.Mesh(decalGeometry, decalMaterial);
-        decalMesh.name = `Tattoo_${tattoos.length + 1}`; // Pojmenujeme tetování
+        decalMesh.name = `Tattoo_${tattoos.length + 1}`;
         scene.add(decalMesh);
-        tattoos.push(decalMesh); // Přidáme tetování do seznamu
+        tattoos.push(decalMesh);
 
-        updateTattooList(); // Aktualizace seznamu tetování
+        updateTattooList();
     });
 }
+
+
+
+
 
 // Aktualizace seznamu tetování
 function updateTattooList() {
     const tattooListContainer = document.getElementById('tattoo-list');
-    tattooListContainer.innerHTML = ''; // Vyčistit starý seznam
+    tattooListContainer.innerHTML = ''; // Vymazání starého seznamu
 
     tattoos.forEach((tattoo, index) => {
         const button = document.createElement('button');
-        button.textContent = `Tetování ${index + 1}`;
+        button.textContent = `Tattoo ${index + 1}`;
         button.addEventListener('click', () => {
-            selectedTattoo = tattoo; // Nastavit aktuálně vybrané tetování
-            highlightSelectedTattoo(index); // Zvýraznit vybrané tetování
+            selectedTattoo = tattoo; // Nastavení aktuálně vybraného tetování
+            highlightSelectedTattoo(index); // Zvýraznění vybraného tetování
         });
         tattooListContainer.appendChild(button);
     });
+
+    // Aktivace nebo deaktivace tlačítka smazání
+    deleteButton.disabled = tattoos.length === 0;
 }
 
-// Zvýraznění vybraného tetování v seznamu
+// Zvýraznění vybraného tetování
 function highlightSelectedTattoo(selectedIndex) {
     const buttons = document.querySelectorAll('#tattoo-list button');
     buttons.forEach((button, index) => {
-        if (index === selectedIndex) {
-            button.style.backgroundColor = '#ccc';
-        } else {
-            button.style.backgroundColor = '';
-        }
+        button.classList.toggle('selected', index === selectedIndex);
     });
+
+    // Povolit tlačítko pro mazání, pokud je něco vybráno
+    deleteButton.disabled = selectedTattoo === null;
 }
 
-// Ovládání vybraného tetování
-document.addEventListener('keydown', (event) => {
-    if (!selectedTattoo) return; // Zkontrolovat, zda je vybrané tetování
+// Detekce kliknutí na model pro umístění tetování
+document.addEventListener('click', (event) => {
+    const mouse = new THREE.Vector2(
+        (event.clientX / window.innerWidth) * 2 - 1,
+        -(event.clientY / window.innerHeight) * 2 + 1
+    );
 
-    const controls = {
-        moveUp: () => (selectedTattoo.position.y += 0.1),
-        moveDown: () => (selectedTattoo.position.y -= 0.1),
-        moveLeft: () => (selectedTattoo.position.x -= 0.1),
-        moveRight: () => (selectedTattoo.position.x += 0.1),
-        scaleUp: () => {
-            selectedTattoo.scale.x += 0.1;
-            selectedTattoo.scale.y += 0.1;
-            selectedTattoo.scale.z += 0.1;
-        },
-        scaleDown: () => {
-            selectedTattoo.scale.x = Math.max(0.1, selectedTattoo.scale.x - 0.1);
-            selectedTattoo.scale.y = Math.max(0.1, selectedTattoo.scale.y - 0.1);
-            selectedTattoo.scale.z = Math.max(0.1, selectedTattoo.scale.z - 0.1);
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    if (currentModel) {
+        const intersects = raycaster.intersectObject(currentModel, true);
+        if (intersects.length > 0) {
+            const point = intersects[0].point;
+            const normal = intersects[0].face.normal.clone().normalize();
+            const position = new THREE.Vector3(point.x, point.y, point.z);
+            const rotation = new THREE.Euler().setFromVector3(normal);
+            const size = new THREE.Vector3(1, 1, 1);
+
+            applyTattoo('/tattoos/anchor.png', position, rotation, size);
         }
-    };
-
-    switch (event.key.toLowerCase()) {
-        case 'w': controls.moveUp(); break;
-        case 's': controls.moveDown(); break;
-        case 'a': controls.moveLeft(); break;
-        case 'd': controls.moveRight(); break;
-        case 'q': controls.scaleUp(); break;
-        case 'e': controls.scaleDown(); break;
     }
 });
 
-// Generování tlačítek tetování
-function generateTattooButtons(tattoos) {
-    const tattooContainer = document.getElementById('tattoo-selector');
-    tattooContainer.innerHTML = ''; // Vymazání existujících tlačítek
-
-    tattoos.forEach((tattoo) => {
-        const button = document.createElement('button');
-        button.classList.add('tattoo-button');
-        button.style.width = '80px';
-        button.style.height = '80px';
-        button.style.margin = '5px';
-        button.style.backgroundImage = `url('/tattoos/${tattoo}')`;
-        button.style.backgroundSize = 'contain';
-        button.style.backgroundRepeat = 'no-repeat';
-        button.style.backgroundPosition = 'center';
-        button.setAttribute('data-path', `/tattoos/${tattoo}`);
-
-        button.addEventListener('click', () => {
-            applyTattoo(`/tattoos/${tattoo}`);
-        });
-
-        tattooContainer.appendChild(button);
-    });
-}
-
-
-// Načtení seznamu tetování
-(async function init() {
-    const tattoos = await fetch('/api/tattoos').then((res) => res.json());
-    generateTattooButtons(tattoos);
-})();
-// Přidání tlačítka a funkce pro smazání vybraného tetování
+// Tlačítko pro smazání vybraného tetování
 const deleteButton = document.createElement('button');
-deleteButton.textContent = '🗑️ Smazat tetování';
+deleteButton.textContent = '🗑️ Delete Tattoo';
 deleteButton.id = 'delete-tattoo-button';
 deleteButton.disabled = true; // Neaktivní, dokud není vybrané tetování
 document.body.appendChild(deleteButton);
 
-// Přidání posluchače pro tlačítko
+// Funkce pro mazání tetování
 deleteButton.addEventListener('click', () => {
     if (selectedTattoo) {
         // Odebrání tetování ze scény
@@ -234,17 +255,37 @@ deleteButton.addEventListener('click', () => {
     }
 });
 
-// Aktualizace funkce pro zvýraznění vybraného tetování
-function highlightSelectedTattoo(selectedIndex) {
-    const buttons = document.querySelectorAll('#tattoo-list button');
-    buttons.forEach((button, index) => {
-        button.classList.toggle('selected', index === selectedIndex);
-    });
+// Generování tlačítek tetování
+function generateTattooButtons(tattooList) {
+    const tattooContainer = document.getElementById('tattoo-selector');
+    tattooContainer.innerHTML = ''; // Vymazání existujících tlačítek
 
-    // Povolit tlačítko pro mazání, pokud je něco vybráno
-    deleteButton.disabled = selectedTattoo === null;
+    tattooList.forEach((tattoo) => {
+        const button = document.createElement('button');
+        button.classList.add('tattoo-button');
+        button.style.width = '80px';
+        button.style.height = '80px';
+        button.style.margin = '5px';
+        button.style.backgroundImage = `url('/tattoos/${tattoo}')`;
+        button.style.backgroundSize = 'contain';
+        button.style.backgroundRepeat = 'no-repeat';
+        button.style.backgroundPosition = 'center';
+        button.setAttribute('data-path', `/tattoos/${tattoo}`);
+
+        button.addEventListener('click', () => {
+            selectedTattoo = null; // Reset selected tattoo
+            applyTattoo(`/tattoos/${tattoo}`, new THREE.Vector3(0, 1.5, 0), new THREE.Euler(0, 0, 0), new THREE.Vector3(1, 1, 1));
+        });
+
+        tattooContainer.appendChild(button);
+    });
 }
 
+// Načtení seznamu tetování z API
+(async function loadTattoos() {
+    const tattoos = await fetch('/api/tattoos').then((res) => res.json());
+    generateTattooButtons(tattoos);
+})();
 
 // Animace
 function animate() {
