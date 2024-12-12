@@ -28,6 +28,11 @@ let currentModel;
 function loadModel(modelPath) {
     if (currentModel) {
         scene.remove(currentModel); // Odstranění předchozího modelu
+
+         // Clear tattoos array and remove tattoo meshes from the scene
+         tattoos.forEach(tattoo => scene.remove(tattoo));
+         tattoos.length = 0; // Clear the array
+         updateTattooList(); // Update the tattoo list UI
     }
 
     loader.load(
