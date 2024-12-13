@@ -375,33 +375,6 @@ document.addEventListener('click', (event) => {
 });
 
 
-// Tlačítko pro smazání vybraného tetování
-const deleteButton = document.createElement('button');
-deleteButton.textContent = '🗑️ Delete Tattoo';
-deleteButton.id = 'delete-tattoo-button';
-deleteButton.disabled = true; // Neaktivní, dokud není vybrané tetování
-document.body.appendChild(deleteButton);
-
-// Funkce pro mazání tetování
-deleteButton.addEventListener('click', () => {
-    if (selectedTattoo) {
-        // Odebrání tetování ze scény
-        scene.remove(selectedTattoo);
-
-        // Odebrání tetování z pole
-        const index = tattoos.indexOf(selectedTattoo);
-        if (index > -1) {
-            tattoos.splice(index, 1);
-        }
-
-        // Reset výběru
-        selectedTattoo = null;
-        deleteButton.disabled = true;
-
-        // Aktualizace seznamu tetování
-        updateTattooList();
-    }
-});
 
 // Načtení seznamu tetování z API
 (async function loadTattoos() {
