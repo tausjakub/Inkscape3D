@@ -403,32 +403,6 @@ deleteButton.addEventListener('click', () => {
     }
 });
 
-// Generování tlačítek tetování
-function generateTattooButtons(tattooList) {
-    const tattooContainer = document.getElementById('tattoo-selector');
-    tattooContainer.innerHTML = ''; // Vymazání existujících tlačítek
-
-    tattooList.forEach((tattoo) => {
-        const button = document.createElement('button');
-        button.classList.add('tattoo-button');
-        button.style.width = '80px';
-        button.style.height = '80px';
-        button.style.margin = '5px';
-        button.style.backgroundImage = `url('/tattoos/${tattoo}')`;
-        button.style.backgroundSize = 'contain';
-        button.style.backgroundRepeat = 'no-repeat';
-        button.style.backgroundPosition = 'center';
-        button.setAttribute('data-path', `/tattoos/${tattoo}`);
-
-        button.addEventListener('click', () => {
-            selectedTattoo = null; // Reset selected tattoo
-            applyTattoo(`/tattoos/${tattoo}`, new THREE.Vector3(0, 1.5, 0), new THREE.Euler(0, 0, 0), new THREE.Vector3(1, 1, 1));
-        });
-
-        tattooContainer.appendChild(button);
-    });
-}
-
 // Načtení seznamu tetování z API
 (async function loadTattoos() {
     const tattoos = await fetch('/api/tattoos').then((res) => res.json());
