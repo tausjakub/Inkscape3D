@@ -1,101 +1,116 @@
-// Základní nastavení scény
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(800, 600);
-renderer.setClearColor(0x888888); // Šedé pozadí
+// Základní nastavení scény (vytvoření scény, kamery a rendereru)
+const scene = new THREE.Scene(); 
+// Perspektivní kamera: zorné pole (FOV) = 75°, poměr stran 800/600, od 0.1 do 1000
+const camera = new THREE.PerspectiveCamera(75, 800 / 600, 0.1, 1000); 
+// WebGLRenderer pro vykreslování 3D scény do HTML
+const renderer = new THREE.WebGLRenderer(); 
+
+// Nastavení velikosti vykreslovací plochy
+renderer.setSize(800, 600); 
+// Nastavení barvy pozadí (šedá)
+renderer.setClearColor(0x888888); 
+// Připojení rendereru do divu s id "3d-container"
 document.getElementById('3d-container').appendChild(renderer.domElement);
 
-// Osvětlení scény
+// Přidání základního (ambientního) světla do scény
+// AmbientLight ovlivňuje všechny objekty ve scéně rovnoměrně
 const light = new THREE.AmbientLight(0xffffff, 1);
 scene.add(light);
 
-// Nastavení kamery - přiblížení k modelu
-camera.position.set(0, 1.5, 12); // Blíže k modelu
-camera.lookAt(0, 1, 0); // Pohled na střed modelu
+// Nastavení pozice kamery tak, aby byla blíže k modelu
+camera.position.set(0, 1.5, 12); // X=0, Y=1.5, Z=12
+// Kamera bude směřovat k bodu (0,1,0) — střed modelu
+camera.lookAt(0, 1, 0);
 
-// OrbitControls pro rotaci modelu myší
+// OrbitControls umožňují uživateli otáčet, zoomovat a posouvat kamerou myší
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.minDistance = 1;
-controls.maxDistance = 100;
+controls.enableDamping = true;        // Umožňuje plynulé „zpomalení“ pohybu
+controls.dampingFactor = 0.05;        // Míra zpomalení
+controls.minDistance = 1;            // Minimální vzdálenost kamery
+controls.maxDistance = 100;          // Maximální vzdálenost kamery
 
-// Načítání modelu
+// GLTFLoader slouží k načítání 3D modelů ve formátu GLTF/GLB
 const loader = new THREE.GLTFLoader();
-let currentModel;
+let currentModel; // Proměnná pro uchování aktuálně načteného 3D modelu
 
+// Funkce pro načtení modelu z dané cesty (modelPath)
 function loadModel(modelPath) {
+    // Pokud už nějaký model je ve scéně, odstraníme ho
     if (currentModel) {
-        scene.remove(currentModel); // Odstranění předchozího modelu
+        scene.remove(currentModel); 
 
-         // Clear tattoos array and remove tattoo meshes from the scene
-         tattoos.forEach(tattoo => scene.remove(tattoo));
-         tattoos.length = 0; // Clear the array
-         updateTattooList(); // Update the tattoo list UI
+        // Odstranění všech tetování, která byla k modelu přidaná
+        tattoos.forEach(tattoo => scene.remove(tattoo));
+        tattoos.length = 0; // Vyprázdnění pole s tetováními
+        updateTattooList(); // Aktualizace uživatelského rozhraní se seznamem tetování
     }
 
+    // Načtení modelu pomocí loaderu
     loader.load(
         modelPath,
         (gltf) => {
+            // Po úspěšném načtení se model uloží do currentModel
             currentModel = gltf.scene;
 
-            // Traverse všechny uzly modelu a nastav bílou barvu
+            // Traverse projde všechny potomky (uzly) modelu
+            // a pro každý mesh nastaví materiál s bílou barvou.
             currentModel.traverse((child) => {
                 if (child.isMesh) {
                     const whiteMaterial = new THREE.MeshStandardMaterial({
                         color: 0xffffff, // Bílá barva
-                        roughness: 0.8,
-                        metalness: 0.1,
+                        roughness: 0.8,  // Hodnota "drsnosti" povrchu
+                        metalness: 0.1,  // Hodnota "kovovosti" povrchu
                     });
-                    child.material = whiteMaterial; // Nastavení nového materiálu
+                    child.material = whiteMaterial; 
                 }
             });
 
-            // Normalizace modelu na pevnou velikost
+            // Vypočítáme velikost bounding boxu modelu a normalizujeme jej
+            // na požadovanou výšku (desiredHeight = 2)
             const box = new THREE.Box3().setFromObject(currentModel);
             const size = new THREE.Vector3();
             box.getSize(size);
 
-            const desiredHeight = 2; // Požadovaná výška modelu
-            const scale = desiredHeight / size.y; // Výpočet měřítka podle výšky
+            const desiredHeight = 2; 
+            const scale = desiredHeight / size.y; // Poměr pro škálování výšky
             currentModel.scale.set(scale, scale, scale);
 
-            // Rotace modelu čelem ke kameře
-            currentModel.rotation.y = Math.PI; // Otočení o 180° kolem osy Y
-            currentModel.rotation.x = Math.PI*0.5;
-            currentModel.rotation.z = Math.PI;
-            // Umístění modelu
+            // Rotace modelu, aby byl natočen tak, jak potřebujeme 
+            // (čelem ke kameře, apod.)
+            currentModel.rotation.y = Math.PI;      // 180° kolem Y
+            currentModel.rotation.x = Math.PI * 0.5; 
+            currentModel.rotation.z = Math.PI;      
+
+            // Posunutí modelu dolů, aby byl střed zhruba ve správné poloze
             currentModel.position.set(0, -6, 0);
 
-            scene.add(currentModel); // Přidání modelu do scény
+            // Přidání modelu do scény
+            scene.add(currentModel);
         },
         undefined,
         (error) => {
+            // Ošetření chyby při načítání
             console.error('Error loading model:', error);
         }
     );
 }
 
+// Výchozí Euler rotace, která se použije jako základ pro náhled tetování
+let previewRotation = new THREE.Euler(0, 0, 0);
 
-let previewRotation = new THREE.Euler(0, 0, 0); // Výchozí rotace náhledu tetování
-
-
-
-
+// Konzolové výpisy pro kontrolu (lze odstranit nebo ponechat pro ladění)
 console.log('Scene contents:', scene.children);
 console.log('Camera position:', camera.position);
 console.log('Renderer size:', renderer.getSize(new THREE.Vector2()));
 
-
-
-// Výběr modelu
+// Selektor (select) pro výběr modelu (např. mužské nebo ženské tělo)
 const modelSelector = document.getElementById('model-selector');
 modelSelector.addEventListener('change', (event) => {
+    // Načteme nově vybraný model
     loadModel(event.target.value);
 });
 
-// První načtení modelu
+// První (výchozí) načtení modelu
 loadModel('/models/male_body.glb');
 
 // Změna barvy pleti
@@ -105,11 +120,12 @@ skinColorButtons.forEach((button) => {
         const selectedColor = button.getAttribute('data-color');
         if (!currentModel) return;
 
+        // Pro každý mesh v modelu vytvoříme nový materiál a nastavíme zvolenou barvu
         currentModel.traverse((child) => {
             if (child.isMesh) {
                 const material = child.material.clone();
                 material.color.set(selectedColor);
-                material.map = null;
+                material.map = null;        // Odstranění textury (pokud byla)
                 material.needsUpdate = true;
                 child.material = material;
             }
@@ -117,16 +133,19 @@ skinColorButtons.forEach((button) => {
     });
 });
 
-// Tetování s použitím shrink-wrap decal geometrie
-const tattoos = []; // Pole pro uchování všech tetování
+// Pole (array) s uloženými tetováními a proměnná pro vybrané tetování
+const tattoos = [];
 let selectedTattoo = null;
 
-// Funkce pro aplikaci tetování
-function applyTattoo(texturePath, position, rotation) {
+// Funkce pro aplikaci tetování na model
+// Vytváří se tzv. DecalGeometry (dekal) — "nálepka" 
+function applyTattoo(texturePath, position) {
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(texturePath, (tattooTexture) => {
         if (!currentModel) return;
 
+        // Vytvoření materiálu pro tetování, které bude poloprůhledné,
+        // ale zachová Z-buffer pro správné vykreslení před/za objekty
         const decalMaterial = new THREE.MeshPhongMaterial({
             map: tattooTexture,
             transparent: true,
@@ -136,6 +155,7 @@ function applyTattoo(texturePath, position, rotation) {
             side: THREE.FrontSide,
         });
 
+        // Najdeme validní (první) mesh v modelu, na který můžeme tetování "přilepit"
         let validMesh = null;
         currentModel.traverse((child) => {
             if (child.isMesh && child.geometry) {
@@ -148,41 +168,46 @@ function applyTattoo(texturePath, position, rotation) {
             return;
         }
 
+        // Vytvoření decal geometrie, která se "nalepí" na povrch daného meshe
+        // position = místo, kam tetování aplikujeme
+        // previewRotation = rotace (Euler) tetování
+        // previewSize = velikost (box) decal geometrie
         const decalGeometry = new THREE.DecalGeometry(
             validMesh,
             position,
-            previewRotation, // Použití aktuální rotace
+            previewRotation,
             previewSize
         );
 
+        // Vytvoření meshe pro tetování, pojmenujeme ho a přidáme do scény
         const decalMesh = new THREE.Mesh(decalGeometry, decalMaterial);
         decalMesh.name = `Tattoo_${tattoos.length + 1}`;
         scene.add(decalMesh);
+
+        // Uložíme si tetování do pole, abychom ho později mohli spravovat
         tattoos.push(decalMesh);
 
+        // Aktualizace seznamu tetování v UI
         updateTattooList();
     });
 }
 
+// Výchozí velikost pro náhled tetování (šířka=2, výška=2, hloubka=0.5)
+let previewSize = new THREE.Vector3(2, 2, 0.5);
 
-
-
-
-let previewSize = new THREE.Vector3(2, 2, 0.5); // Výchozí velikost tetování
-
-
-
-// Aktualizace seznamu tetování
-// Funkce pro načítání seznamu tetování a aktualizaci tlačítek v tattoo-list
+// Funkce pro načtení seznamu tetování z API a vytvoření tlačítek (miniatur)
 async function loadAndGenerateTattooButtons() {
     try {
+        // Volání našeho serveru (endpointu /api/tattoos), který vrací pole názvů souborů tetování
         const tattooList = await fetch('/api/tattoos').then((res) => res.json());
         const tattooListContainer = document.getElementById('tattoo-list');
-        tattooListContainer.innerHTML = ''; // Vyčistí seznam
+        tattooListContainer.innerHTML = ''; // Vyprázdnit seznam (aby se neskládal starý s novým)
 
+        // Pro každý název tetování vytvoříme tlačítko s náhledem
         tattooList.forEach((tattoo) => {
             const button = document.createElement('button');
             button.classList.add('tattoo-button');
+            // Nastavení pozadí tlačítka jako miniatura tetování
             button.style.backgroundImage = `url('/tattoos/${tattoo}')`;
             button.style.width = '80px';
             button.style.height = '80px';
@@ -191,52 +216,61 @@ async function loadAndGenerateTattooButtons() {
             button.style.backgroundRepeat = 'no-repeat';
             button.style.backgroundPosition = 'center';
 
-            // Nastavení datové cesty pro tetování
+            // Uložení cesty k tetování do atributu "data-path"
             button.setAttribute('data-path', `/tattoos/${tattoo}`);
 
-            // Akce při kliknutí na tlačítko
+            // Událost při kliknutí na tlačítko — nastaví vybrané tetování
             button.addEventListener('click', () => {
-                selectedTattooPath = `/tattoos/${tattoo}`; // Nastaví vybrané tetování
+                selectedTattooPath = `/tattoos/${tattoo}`;
                 console.log(`Selected tattoo: ${selectedTattooPath}`);
             });
 
-            tattooListContainer.appendChild(button); // Přidá tlačítko do seznamu
+            // Přidání tlačítka do kontejneru
+            tattooListContainer.appendChild(button);
         });
     } catch (error) {
         console.error('Chyba při načítání tetování:', error);
     }
 }
 
-// Zavolání funkce pro načtení a generování tetování při načtení stránky
+// Zavoláme funkci pro načtení tetování (a generování tlačítek) hned po spuštění
 loadAndGenerateTattooButtons();
 
-// Funkce pro aplikaci vybraného tetování na model
+// Poslech události `click` na celý dokument
+// Pokud máme vybrané tetování a klikneme na model, tak se tetování aplikuje
 document.addEventListener('click', (event) => {
     if (selectedTattooPath && currentModel) {
+        // Převod souřadnic myši na normalizované souřadnice pro Raycaster
         const mouse = new THREE.Vector2(
             (event.clientX / window.innerWidth) * 2 - 1,
             -(event.clientY / window.innerHeight) * 2 + 1
         );
 
         const raycaster = new THREE.Raycaster();
+        // Nastavíme Raycaster z kamery a pozice myši
         raycaster.setFromCamera(mouse, camera);
 
+        // Zjištění průsečíků s modelem (rekurzivně na všechny children)
         const intersects = raycaster.intersectObject(currentModel, true);
         if (intersects.length > 0) {
-            const point = intersects[0].point;
+            // První průsečík
+            const point = intersects[0].point;           
             const normal = intersects[0].face.normal.clone().normalize();
+
+            // Pozice, kam se tetování "přilepí"
             const position = new THREE.Vector3(point.x, point.y, point.z);
+            // Rotace vycházející z normály plochy
             const rotation = new THREE.Euler().setFromVector3(normal);
 
-            // Použití vybraného tetování
+            // Aplikujeme vybrané tetování
             applyTattoo(selectedTattooPath, position, rotation);
         }
     }
 });
 
-let previewTattoo = null; // Náhled tetování
+let previewTattoo = null; // Pomocná proměnná pro meš s náhledem tetování
 
-// Detekce kliknutí na model pro náhled tetování
+// Detekce pohybu myši pro náhled tetování
 document.addEventListener('mousemove', (event) => {
     const mouse = new THREE.Vector2(
         (event.clientX / window.innerWidth) * 2 - 1,
@@ -249,38 +283,42 @@ document.addEventListener('mousemove', (event) => {
     if (currentModel) {
         const intersects = raycaster.intersectObject(currentModel, true);
         if (intersects.length > 0) {
+            // Získáme bod a normálu průsečíku
             const point = intersects[0].point;
             const normal = intersects[0].face.normal.clone().normalize();
             const position = new THREE.Vector3(point.x, point.y, point.z);
             const rotation = new THREE.Euler().setFromVector3(normal);
 
-            // Zobrazí náhled tetování
+            // Zobrazíme náhled tetování
             showPreviewTattoo(position, rotation);
         } else {
-            // Skryje náhled, pokud není detekován model
+            // Schová náhled, pokud myš již není nad modelem
             hidePreviewTattoo();
         }
     }
 });
 
-
+// Funkce pro zobrazení náhledu tetování
 function showPreviewTattoo(position, rotation) {
-    if (!selectedTattooPath) return; // Pokud není vybrané tetování, náhled se nezobrazí
+    // Pokud nemáme zvolené tetování, neděláme nic
+    if (!selectedTattooPath) return;
 
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(selectedTattooPath, (tattooTexture) => {
-        // Pokud již existuje náhled tetování, odstraní ho
+        // Pokud již existuje nějaký náhled tetování, odstraníme ho, abychom nevytvářeli kopie
         if (previewTattoo) scene.remove(previewTattoo);
 
+        // Materiál pro náhled tetování s poloprůhledností
         const previewMaterial = new THREE.MeshPhongMaterial({
             map: tattooTexture,
             transparent: true,
-            opacity: 0.5, // Poloprůhledný náhled
+            opacity: 0.5, 
             depthTest: true,
             depthWrite: false,
             side: THREE.FrontSide,
         });
 
+        // Najdeme validní mesh v modelu
         let validMesh = null;
         currentModel.traverse((child) => {
             if (child.isMesh && child.geometry) {
@@ -293,13 +331,14 @@ function showPreviewTattoo(position, rotation) {
             return;
         }
 
-        // Upravení rotace náhledu tetování
+        // Opravení rotace tak, aby se náhled lépe zarovnal k povrchu modelu
         const correctedRotation = new THREE.Euler(
             rotation.x,
             rotation.y,
-            rotation.z =2*Math.PI // Posun rotace o 90° pro zarovnání
+            rotation.z - 1 // Malá úprava rotace
         );
 
+        // Vytvoření decal geometrie pro náhled tetování
         const decalGeometry = new THREE.DecalGeometry(
             validMesh,
             position,
@@ -307,56 +346,60 @@ function showPreviewTattoo(position, rotation) {
             previewSize
         );
 
+        // Mesh pro náhled tetování
         previewTattoo = new THREE.Mesh(decalGeometry, previewMaterial);
         scene.add(previewTattoo);
     });
 }
 
-
-
-
+// Funkce pro znovuvytvoření náhledu tetování (např. po změně velikosti/rotace)
 function updatePreviewTattoo() {
     if (previewTattoo) {
+        // Odstraníme starý náhled
         scene.remove(previewTattoo);
         previewTattoo = null;
     }
 
-    // Znovu vytvoří náhled s aktualizovanou velikostí
-    const mouseEvent = { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 }; // Simulace myši ve středu obrazovky
+    // Spustíme uměle event myši uprostřed obrazovky, aby se náhled znovu vytvořil
+    const mouseEvent = { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 };
     document.dispatchEvent(new MouseEvent('mousemove', mouseEvent));
 }
 
+// Ovládání rotace náhledu tetování pomocí kláves Q (rotace vlevo) a E (rotace vpravo)
 document.addEventListener('keydown', (event) => {
     switch (event.key) {
-        case 'Q': // Rotace doleva (zvýšení rotace kolem osy Z)
-            previewRotation.z += 0.1; // Rotace v radiánech
+        case 'Q': 
+            // Zvýšení rotace kolem osy Z (otočení doleva)
+            previewRotation.z += 0.1; 
             updatePreviewTattoo();
             break;
-        case 'E': // Rotace doprava (snížení rotace kolem osy Z)
+        case 'E': 
+            // Snížení rotace kolem osy Z (otočení doprava)
             previewRotation.z -= 0.1;
             updatePreviewTattoo();
             break;
     }
 });
 
-
+// Ovládání velikosti tetování pomocí kláves + a -
 document.addEventListener('keydown', (event) => {
     switch (event.key) {
-        case '+': // Zvýšení velikosti
+        case '+': 
+            // Zvýšení velikosti
             previewSize.x += 0.1;
             previewSize.y += 0.1;
-            updatePreviewTattoo(); // Aktualizace náhledu
+            updatePreviewTattoo();
             break;
-        case '-': // Snížení velikosti
-            previewSize.x = Math.max(0.1, previewSize.x - 0.1); // Minimální velikost 0.1
+        case '-': 
+            // Snížení velikosti s omezením na min. 0.1
+            previewSize.x = Math.max(0.1, previewSize.x - 0.1);
             previewSize.y = Math.max(0.1, previewSize.y - 0.1);
-            updatePreviewTattoo(); // Aktualizace náhledu
+            updatePreviewTattoo();
             break;
     }
 });
 
-
-
+// Funkce pro schování náhledu tetování
 function hidePreviewTattoo() {
     if (previewTattoo) {
         scene.remove(previewTattoo);
@@ -364,28 +407,29 @@ function hidePreviewTattoo() {
     }
 }
 
-
+// Když klikneme, zatímco je aktivní náhled tetování, umístíme tetování "natrvalo"
 document.addEventListener('click', (event) => {
     if (previewTattoo) {
-        // Finalizace tetování (přidání do seznamu)
+        // Přidáme náhled tetování do pole tetování (takže ho bereme jako finalizované)
         tattoos.push(previewTattoo);
-        previewTattoo = null; // Reset náhledu
+        // Reset náhledu
+        previewTattoo = null; 
+        // Aktualizace seznamu tetování (pokud v UI nějaký existuje)
         updateTattooList();
     }
 });
 
-
-
-// Načtení seznamu tetování z API
+// Načtení seznamu tetování z API a vygenerování příslušných tlačítek
 (async function loadTattoos() {
     const tattoos = await fetch('/api/tattoos').then((res) => res.json());
     generateTattooButtons(tattoos);
 })();
 
-// Animace
+// Funkce animace, která se volá pořád dokola (60x za sekundu nebo podle výkonu)
+// Zajišťuje překreslování scény a průběžné aktualizace
 function animate() {
     requestAnimationFrame(animate);
-    controls.update(); // Zajistí rotaci modelu
-    renderer.render(scene, camera);
+    controls.update(); // OrbitControls update (plynulé rotace/zoom kamery)
+    renderer.render(scene, camera); // Vykreslení scény
 }
 animate();
