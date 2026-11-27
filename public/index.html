@@ -2,50 +2,293 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tattoo Visualization App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Try tattoos on an adjustable 3D body, design your own and print real-size stencils for your artist.">
+    <meta name="theme-color" content="#d6336c">
+    <title>Tattoo Studio – 3D Tattoo Visualizer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖋️</text></svg>">
     <link rel="stylesheet" href="style.css">
+    <script>
+        // Motiv nastavit před vykreslením, ať stránka neblikne světlým pozadím
+        document.documentElement.dataset.theme = localStorage.getItem('tattoo-studio-theme')
+            || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    </script>
 </head>
 <body>
-    <header>
-        <h1>Tattoo Visualization App</h1>
-        <p>Visualize your tattoos on a 3D model in real-time</p>
-    </header>
-    <main>
+<div id="app">
+    <main id="viewport" aria-label="3D preview">
         <div id="3d-container"></div>
-        <div id="controls">
-            <select id="model-selector">
-                <option value="/models/male_body.glb">Male Body</option>
-                <option value="/models/female2.glb">Female Body</option>
-            </select>
-            <div id="skin-color-selector">
-                <button class="skin-color" data-color="#ffe0bd"></button>
-                <button class="skin-color" data-color="#ffcd94"></button>
-                <button class="skin-color" data-color="#eac086"></button>
-                <button class="skin-color" data-color="#ae734b"></button>
-                <button class="skin-color" data-color="#6f4f28"></button>
+        <div id="loading" class="overlay"><div class="spinner"></div><span id="loading-text">Loading body…</span></div>
+        <div id="drop-overlay" class="overlay" hidden>Drop images to add them as tattoos</div>
+
+        <div class="view-bar" role="toolbar" aria-label="Camera views">
+            <button type="button" data-view="front">Front</button>
+            <button type="button" data-view="back">Back</button>
+            <button type="button" data-view="left">Left</button>
+            <button type="button" data-view="right">Right</button>
+            <button type="button" data-view="chest">Chest</button>
+            <button type="button" data-view="upperBack">Upper back</button>
+            <button type="button" data-view="leftArm">Left arm</button>
+            <button type="button" data-view="rightArm">Right arm</button>
+            <button type="button" data-view="legs">Legs</button>
+        </div>
+
+        <div class="viewport-tools">
+            <button type="button" id="undo" class="icon-chip" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button>
+            <button type="button" id="redo" class="icon-chip" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>↷</button>
+            <button type="button" id="toggle-tattoos" class="icon-chip" title="Hide tattoos (before / after)" aria-label="Hide tattoos" aria-pressed="false">👁</button>
+            <button type="button" id="auto-rotate" class="icon-chip" title="Turntable" aria-label="Turntable rotation" aria-pressed="false">⟳</button>
+            <button type="button" id="theme-toggle" class="icon-chip" title="Dark / light mode" aria-label="Toggle dark mode">◐</button>
+        </div>
+
+        <div id="hint" class="hint" aria-live="polite"></div>
+    </main>
+
+    <aside id="sidebar">
+        <header class="brand">
+            <div class="logo" aria-hidden="true">🖋️</div>
+            <div>
+                <h1>Tattoo Studio</h1>
+                <p>Try it on before you ink it.</p>
             </div>
-           
-            <div id="tattoo-list"></div>
-            <div id="instructions">
-                <h3>Keyboard Controls:</h3>
-                <ul>
-                    <li><b>W / S:</b> Move tattoo up / down</li>
-                    <li><b>A / D:</b> Move tattoo left / right</li>
-                    <li><b>Q:</b> Increase tattoo size</li>
-                    <li><b>E:</b> Decrease tattoo size</li>
-                </ul>
+        </header>
+
+        <nav class="tabs" role="tablist" aria-label="Panels">
+            <button type="button" role="tab" id="tab-btn-body" aria-controls="tab-body" aria-selected="true">Body</button>
+            <button type="button" role="tab" id="tab-btn-tattoos" aria-controls="tab-tattoos" aria-selected="false">Tattoos</button>
+            <button type="button" role="tab" id="tab-btn-placed" aria-controls="tab-placed" aria-selected="false">Placed <span id="placed-count" class="badge">0</span></button>
+            <button type="button" role="tab" id="tab-btn-design" aria-controls="tab-design" aria-selected="false">Design</button>
+        </nav>
+
+        <!-- Tělo -->
+        <section id="tab-body" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-body">
+            <div class="card">
+                <div class="card-title">
+                    <h2>Measurements</h2>
+                    <button id="units-toggle" class="link-button" type="button">Switch to inches / lb</button>
+                </div>
+                <div id="body-sliders"></div>
+                <p class="muted small">Type a value or drag the slider. Weight is estimated from body volume.</p>
+                <button id="reset-body" class="link-button" type="button">Reset body shape</button>
+            </div>
+            <div class="card">
+                <h2>Skin</h2>
+                <div id="skin-color-selector">
+                    <button class="skin-color" type="button" data-color="#ffe0bd" style="background:#ffe0bd" aria-label="Skin tone 1"></button>
+                    <button class="skin-color" type="button" data-color="#ffcd94" style="background:#ffcd94" aria-label="Skin tone 2"></button>
+                    <button class="skin-color" type="button" data-color="#eac086" style="background:#eac086" aria-label="Skin tone 3"></button>
+                    <button class="skin-color" type="button" data-color="#c68e63" style="background:#c68e63" aria-label="Skin tone 4"></button>
+                    <button class="skin-color" type="button" data-color="#ae734b" style="background:#ae734b" aria-label="Skin tone 5"></button>
+                    <button class="skin-color" type="button" data-color="#6f4f28" style="background:#6f4f28" aria-label="Skin tone 6"></button>
+                    <button class="skin-color" type="button" data-color="#4a3020" style="background:#4a3020" aria-label="Skin tone 7"></button>
+                    <label class="skin-custom" title="Custom skin tone">
+                        <input id="skin-custom" type="color" value="#ffcd94" aria-label="Custom skin tone">
+                    </label>
+                </div>
+                <label class="check"><input id="underwear" type="checkbox" checked> Show underwear</label>
+            </div>
+        </section>
+
+        <!-- Tetování -->
+        <section id="tab-tattoos" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-tattoos" hidden>
+            <div class="card">
+                <div class="card-title">
+                    <h2>Library</h2>
+                    <input id="library-search" class="text-input search" type="search" placeholder="Search…" aria-label="Search the library">
+                </div>
+                <div id="tattoo-list">
+                    <label class="tile-action" title="Upload images from your device">
+                        <input id="upload-input" type="file" accept="image/*" multiple hidden>
+                        <span class="tile-icon">⤒</span><span>Upload</span>
+                    </label>
+                    <button id="open-editor" class="tile-action" type="button" title="Draw your own design">
+                        <span class="tile-icon">✎</span><span>Draw</span>
+                    </button>
+                </div>
+                <p class="muted small">Tip: drag &amp; drop images anywhere. White backgrounds are removed automatically.</p>
+            </div>
+
+            <div class="card" id="tattoo-settings">
+                <div class="card-title">
+                    <h2 id="settings-title">New tattoo</h2>
+                    <button id="done-editing" class="link-button" type="button" hidden>Done</button>
+                </div>
+                <input id="tattoo-name" class="text-input" type="text" maxlength="40" placeholder="Name" aria-label="Tattoo name" hidden>
+                <label class="slider">
+                    <span class="slider-head"><span>Size</span><output id="size-value"></output></span>
+                    <input id="tattoo-size" type="range" min="1" max="60" step="0.5" value="10">
+                </label>
+                <label class="slider">
+                    <span class="slider-head"><span>Rotation</span><output id="rotation-value">0°</output></span>
+                    <input id="tattoo-rotation" type="range" min="-180" max="180" step="1" value="0">
+                </label>
+                <div class="button-row">
+                    <button id="flip-tattoo" class="button" type="button" aria-pressed="false">⇋ Flip</button>
+                    <button id="mirror-tattoo" class="button" type="button" disabled title="Copy to the other side of the body (M)">⧉ Mirror copy</button>
+                    <button id="duplicate-tattoo" class="button" type="button" disabled title="Duplicate (D)">⊕ Duplicate</button>
+                    <button id="center-tattoo" class="button" type="button" disabled title="Move onto the body's center line (C)">⇹ Center</button>
+                    <button id="lock-tattoo" class="button" type="button" disabled aria-pressed="false" title="Lock position (L)">🔒 Lock</button>
+                    <button id="edit-design" class="button" type="button" disabled title="Open in the design editor">✎ Edit art</button>
+                    <button id="delete-tattoo" class="button danger" type="button" disabled>Delete</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 id="ink-title">Ink – new tattoos</h2>
+                <p class="muted small">Style and age apply to the selected tattoo only.</p>
+                <div class="segmented" role="radiogroup" aria-label="Ink style" id="ink-style">
+                    <button type="button" data-value="bw" role="radio">Black &amp; grey</button>
+                    <button type="button" data-value="color" role="radio">Color</button>
+                    <button type="button" data-value="stencil" role="radio">Line art</button>
+                </div>
+                <div class="segmented" role="radiogroup" aria-label="Ink age" id="ink-age">
+                    <button type="button" data-value="fresh" role="radio">Fresh</button>
+                    <button type="button" data-value="healed" role="radio">Healed</button>
+                    <button type="button" data-value="aged" role="radio">10+ years</button>
+                </div>
+                <label class="slider">
+                    <span class="slider-head"><span>Remove light background</span><output id="bg-value"></output></span>
+                    <input id="ink-background" type="range" min="0.5" max="1" step="0.01" value="0.9">
+                </label>
+            </div>
+        </section>
+
+        <!-- Umístěná tetování -->
+        <section id="tab-placed" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-placed" hidden>
+            <div class="card">
+                <div class="card-title">
+                    <h2>Placed tattoos</h2>
+                    <button id="clear-tattoos" class="link-button" type="button" hidden>Remove all</button>
+                </div>
+                <ul id="placed-tattoos"></ul>
+                <p id="coverage" class="muted small" hidden></p>
+                <div id="placed-empty" class="empty">
+                    <div class="empty-icon" aria-hidden="true">✦</div>
+                    <p>No tattoos yet.</p>
+                    <button class="button primary" type="button" data-goto="tattoos">Pick a tattoo</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Návrh: uložit, export, tisk -->
+        <section id="tab-design" class="tab-panel" role="tabpanel" aria-labelledby="tab-btn-design" hidden>
+            <div class="card">
+                <h2>For your tattoo artist</h2>
+                <p class="muted small">Prints every placed tattoo at its real size, with placement and measurements.</p>
+                <div class="segmented" role="radiogroup" aria-label="Print style" id="print-style">
+                    <button type="button" data-value="original" role="radio" aria-checked="true">As designed</button>
+                    <button type="button" data-value="stencil" role="radio" aria-checked="false">Stencil lines</button>
+                </div>
+                <label class="check"><input id="print-mirror" type="checkbox"> Mirror for transfer paper</label>
+                <button id="print" class="button primary" type="button">🖨 Print real-size stencils</button>
+            </div>
+            <div class="card">
+                <h2>Export</h2>
+                <div class="button-row">
+                    <button id="export-image" class="button" type="button">Save picture</button>
+                    <button id="export-sheet" class="button" type="button">Save front / side / back</button>
+                    <button id="export-compare" class="button" type="button">Save before / after</button>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Project</h2>
+                <p class="muted small">Your work is saved automatically in this browser.</p>
+                <div class="button-row">
+                    <button id="save-design" class="button" type="button">Download project</button>
+                    <label class="button">
+                        <input id="open-design" type="file" accept=".json,application/json" hidden>Open project
+                    </label>
+                    <button id="start-over" class="button danger" type="button">Start over</button>
+                </div>
+            </div>
+            <div class="card help">
+                <h2>Shortcuts</h2>
+                <dl>
+                    <dt>Click / tap</dt><dd>Place, or select a placed tattoo</dd>
+                    <dt>Drag a tattoo</dt><dd>Move it over the skin</dd>
+                    <dt>Arrow keys</dt><dd>Nudge (Shift = bigger steps)</dd>
+                    <dt>Q / E · Alt+wheel</dt><dd>Rotate</dd>
+                    <dt>+ / − · Shift+wheel</dt><dd>Resize</dd>
+                    <dt>F / M</dt><dd>Flip / mirror copy</dd>
+                    <dt>D / C / L</dt><dd>Duplicate / center / lock</dd>
+                    <dt>Delete</dt><dd>Remove selected</dd>
+                    <dt>Ctrl+Z / Ctrl+Y</dt><dd>Undo / redo</dd>
+                    <dt>Esc</dt><dd>Cancel / done</dd>
+                    <dt>Drag · wheel · right-drag</dt><dd>Orbit · zoom · pan</dd>
+                </dl>
+            </div>
+            <p class="credits">Body model: <a href="https://github.com/makehumancommunity/makehuman" target="_blank" rel="noopener">MakeHuman</a> (CC0). Rendering: three.js.</p>
+        </section>
+    </aside>
+</div>
+
+<!-- Editor návrhů -->
+<dialog id="editor" aria-labelledby="editor-title">
+    <form method="dialog" class="editor-layout" onsubmit="return false">
+        <header class="editor-header">
+            <h2 id="editor-title">Design editor</h2>
+            <input id="ed-name" type="text" placeholder="Design name" aria-label="Design name" maxlength="40">
+        </header>
+        <div class="editor-tools" role="toolbar" aria-label="Drawing tools">
+            <div class="segmented">
+                <button type="button" data-tool="brush" title="Brush">✎ Brush</button>
+                <button type="button" data-tool="line" title="Line">╱ Line</button>
+                <button type="button" data-tool="circle" title="Circle">◯ Circle</button>
+                <button type="button" data-tool="text" title="Text">T Text</button>
+                <button type="button" data-tool="eraser" title="Eraser">⌫ Erase</button>
+            </div>
+            <label class="inline">Color <input id="ed-color" type="color" value="#111111"></label>
+            <label class="inline">Size <input id="ed-size" type="range" min="2" max="60" value="10"></label>
+            <label class="inline">Symmetry
+                <select id="ed-symmetry">
+                    <option value="none">Off</option>
+                    <option value="mirror">Mirror</option>
+                    <option value="4">Mandala 4</option>
+                    <option value="6">Mandala 6</option>
+                    <option value="8">Mandala 8</option>
+                    <option value="12">Mandala 12</option>
+                </select>
+            </label>
+            <label class="inline" id="ed-kaleido-row" hidden><input id="ed-kaleido" type="checkbox" checked> Kaleidoscope</label>
+            <div class="inline" id="ed-text-row" hidden>
+                <input id="ed-text" type="text" placeholder="Text, then click canvas" aria-label="Text to place" maxlength="60">
+                <select id="ed-font" aria-label="Font">
+                    <option value="'Brush Script MT', cursive">Script</option>
+                    <option value="'Old English Text MT', 'UnifrakturMaguntia', serif">Gothic</option>
+                    <option value="Georgia, serif">Serif</option>
+                    <option value="Impact, 'Arial Black', sans-serif">Bold</option>
+                    <option value="'Courier New', monospace">Typewriter</option>
+                </select>
             </div>
         </div>
-    </main>
-    <footer>
-        <p>&copy; 2024 Tattoo Visualization App</p>
-    </footer>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.110.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.110.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.110.0/examples/js/geometries/DecalGeometry.js"></script>
+        <div class="editor-stage">
+            <canvas id="editor-canvas" aria-label="Drawing canvas"></canvas>
+            <svg id="editor-guides" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+        <footer class="editor-footer">
+            <div class="button-row">
+                <button id="ed-undo" class="button" type="button">↶ Undo</button>
+                <button id="ed-redo" class="button" type="button">↷ Redo</button>
+                <button id="ed-clear" class="button" type="button">Clear</button>
+                <label class="button"><input id="ed-import" type="file" accept="image/*" hidden>Import image</label>
+            </div>
+            <span id="ed-status" class="muted small" role="status"></span>
+            <div class="button-row">
+                <button id="ed-cancel" class="button" type="button">Cancel</button>
+                <button id="ed-save" class="button primary" type="button">Save to library</button>
+            </div>
+        </footer>
+    </form>
+</dialog>
 
+<div id="print-sheet" aria-hidden="true"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.110.0/examples/js/controls/OrbitControls.js"></script>
+<script src="body.js"></script>
+<script src="ink.js"></script>
+<script src="editor.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

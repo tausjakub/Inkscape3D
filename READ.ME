@@ -1,7 +1,41 @@
-problémy co je třeba vyřešit:
-- rotování tetování
-- funguje pouze na pánské postavě (asi kvůli tomu že je defaultní)
-- jde dávat pouze kotva jako tetování
-- 
+Tattoo Studio – vyzkoušej tetování na nastavitelném 3D těle (three.js r110 + Express)
 
-server turn on - nodemon server.js
+spuštění:
+- npm install
+- npm start   (nebo nodemon server.js)
+- otevřít http://localhost:3000   (funguje i na telefonu/tabletu ve stejné síti)
+
+funkce:
+- tělo: pohlaví, věk, výška, váha, svaly, hrudník, pas, boky, vnitřní délka nohy –
+  slider nebo zadání čísla (cm/kg nebo in/lb); váha je odhad z objemu těla
+- barva kůže (předvolby + vlastní), spodní prádlo, oči
+- knihovna tetování: složka tattoos/, nahrání z počítače / drag & drop, editor návrhů
+  (štětec, čára, kruh, text, guma, zrcadlo / mandala symetrie, import obrázku)
+- umístění kliknutím/ťuknutím; velké motivy se obtáčí kolem paže, nohy, boku i na záda
+  (kůže se "rozvine" od kotvy, nepromítá se jen zepředu)
+- úpravy: tažení po kůži, šipky (posun), velikost v cm, rotace (Q/E, Shift/Alt+kolečko), převrácení,
+  zrcadlová kopie, duplikát, vycentrování na osu těla, zámek pozice, přejmenování, skrytí, smazání;
+  undo/redo (Ctrl+Z / Ctrl+Y)
+- hledání v knihovně, plocha inkoustu (cm² a % kůže, i na tiskovém listu), export před / po
+- inkoust pro každé tetování zvlášť: černobílý / barevný / linky, čerstvé / zhojené / po 10 letech;
+  odstranění bílého pozadí je společné pro všechna
+- pohledy kamery (předek, záda, boky, hrudník, paže, nohy), otáčení, skrytí tetování (před/po)
+- tisk šablon pro tatéra ve skutečné velikosti (s místem na těle, rozměry, kalibračním pravítkem,
+  volitelně zrcadlově pro transferový papír)
+- export obrázku a listu předek/bok/záda, uložení/otevření projektu (.json), automatické ukládání
+- tmavý režim, rozložení pro telefon a tablet
+
+soubory:
+- public/body.js   – tvar těla, míry, pohledy, plochy pro tetování (bez DOMu, testovatelné v Node)
+- public/ink.js    – zpracování obrázků na "inkoust"
+- public/editor.js – editor návrhů
+- public/script.js – aplikace (scéna, UI, historie, export, tisk)
+
+data těla: models/makehuman.bin + makehuman.json z MakeHuman base mesh + targets
+(CC0 1.0, https://github.com/makehumancommunity/makehuman)
+- přegenerování: do <složka> stáhni makehuman/data/3dobjs/base.obj a do <složka>/targets tyto .target:
+  macrodetails/universal-{female,male}-{young,old}-*, macrodetails/height/*-young-*,
+  macrodetails/{african,asian,caucasian}-{female,male}-{young,old},
+  measure/measure-{bust-circ,waist-circ,hips-circ,upperleg-height,lowerleg-height}-{decr,incr}
+  a spusť: node scripts/build-makehuman.js <složka>
+- kontrola: node scripts/check-body.js
