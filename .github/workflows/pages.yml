@@ -1,0 +1,33 @@
+# Static build for GitHub Pages: public/ + models/ + tattoos/ and a fixed api/tattoos list (instead of server.js)
+name: Pages
+on:
+  push:
+    branches: [main, parametric-body-studio]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build site
+        run: |
+          mkdir -p site/api
+          cp -r public/. site/
+          cp -r models tattoos site/
+          (cd tattoos && ls *.png) | jq -R . | jq -s . > site/api/tattoos
+          touch site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -124,8 +124,8 @@ const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness:
 
 async function loadBody() {
     const [meta, buffer] = await Promise.all([
-        fetch('/models/makehuman.json').then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); }),
-        fetch('/models/makehuman.bin').then((r) => { if (!r.ok) throw new Error(r.statusText); return r.arrayBuffer(); }),
+        fetch('models/makehuman.json').then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); }),
+        fetch('models/makehuman.bin').then((r) => { if (!r.ok) throw new Error(r.statusText); return r.arrayBuffer(); }),
     ]);
     body = Body.create(meta, buffer);
     positions = new Float32Array(body.n3);
@@ -305,8 +305,8 @@ $('library-search').addEventListener('input', filterLibrary);
 
 async function loadBuiltInTattoos() {
     try {
-        const files = await fetch('/api/tattoos').then((r) => r.json());
-        files.forEach((f) => addToLibrary(`/tattoos/${encodeURIComponent(f)}`, f.replace(/\.[^.]+$/, '')));
+        const files = await fetch('api/tattoos').then((r) => r.json());
+        files.forEach((f) => addToLibrary(`tattoos/${encodeURIComponent(f)}`, f.replace(/\.[^.]+$/, '')));
     } catch (e) {
         console.error('Chyba při načítání tetování:', e);
         toast('Could not load the tattoo library');
